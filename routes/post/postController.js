@@ -212,7 +212,7 @@ exports.getAllPersonalPost = async (req, res, next) => {
     query.exec(async (err, posts) => {
         if(err) return next(err);
 
-        if(!posts || posts.length == 0) return res.status(404).json({
+        if(!posts || posts.length == 0) return res.status(403).json({
             error: "posts cannot be found"
         })
         else {
