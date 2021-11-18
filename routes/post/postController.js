@@ -1,6 +1,6 @@
+const Blogger = require("../../models/blogger");
 const Post = require("../../models/post");
 const {body, validationResult} = require("express-validator");
-const Blogger = require("../../models/blogger");
 const Comment = require('../../models/comment');
 
 const helper = require('../helper/helper');
@@ -13,6 +13,26 @@ exports.getPostById = (req, res, next) => {
             error: "post does not exist"
         })
         else{
+            return res.status(200).json({
+                post: post
+            })
+        }
+    })
+}
+
+exports.getPublishedPostById = (req, res, next) => {
+    Post.findOne({ _id: req.params.id, published: true}).exec(async (err, post) => {
+        if (err) return next(err);
+
+        if(!post) return res.status(404).json({
+            error: "post does not exist"
+        })
+        else{
+            //populate author
+            await Post.populate(post, {path: 'author', select: "username"});
+            post.view += 1;
+            await post.save();
+
             return res.status(200).json({
                 post: post
             })
@@ -50,7 +70,7 @@ exports.deletePostById = [
 exports.putPostById = [
     helper.checkIfPostIsFromUser,
     body("title").isLength({max: 200}).withMessage("title must be less than 200 character long"),
-    body("published").optional().isBoolean(),
+    body("published").optional({checkFalsy: true}).isBoolean(),
     (req, res, next) => {
         const errors = validationResult(req);
 
@@ -82,9 +102,10 @@ exports.putPostById = [
 
 //tested
 exports.postPost = [
-    body("title").exists().isString().isLength({max: 200}).withMessage("title must be a string and has the length of maximum 200 characters"),
+    body("title").exists().isString().isLength({min: 1, max: 200}).withMessage("title must be a string and has the length of maximum 200 characters"),
+    body("subtitle").optional({checkFalsy: true}).isString().isLength({max: 200}).withMessage("subtitle must be less than 200 characters long"),
     body("content").exists().isString().isLength({min: 1}).withMessage("content must be not empty"),
-    body("published").optional().isBoolean().withMessage("published status must be true/false"),
+    body("published").optional({checkFalsy: true}).isBoolean().withMessage("published status must be true/false"),
     async (req, res, next) => {
         const errors = validationResult(req);
 
@@ -96,10 +117,14 @@ exports.postPost = [
         else{
             let author = req.user._id;
 
+            console.log("title: " + req.body.title);
+
             let newPost = new Post({
                 title: req.body.title,
                 content: req.body.content,
-                author: author
+                author: author,
+                published: req.body.published == null ? true : req.body.published,
+                subtitle: req.body.subtitle ? req.body.subtitle : ""
             })
 
             try{
@@ -121,7 +146,7 @@ exports.getAllPost = (req, res, next) => {
         Post.find()
         .limit(10)
         .skip(10 * (page - 1))
-        .select("title author date_created published")
+        .select("title subtitle author date_created published")
         .exec((err, posts) => {
             if(err) return next(err);
 
@@ -139,27 +164,62 @@ exports.getAllPost = (req, res, next) => {
     }
 }
 
-exports.getAllPostPublished = (req, res, next) => {
+exports.getAllPostPublished = async (req, res, next) => {
     try{
         let page = req.query.p ? parseInt(req.query.p) : 1;
+        let mode = req.query.m ? req.query.m : "default";
 
-        Post.find({published: true})
+        let count = await Post.countDocuments({published: true});
+
+        let query = Post.find({published: true})
         .limit(10)
         .skip(10 * (page - 1))
-        .select("title author date_created published")
-        .exec((err, posts) => {
+        .select("title subtitle author date_created published view");
+
+        query = helper.processModePost(query, mode);
+
+        query.exec(async (err, posts) => {
             if(err) return next(err);
 
             if(!posts || posts.length == 0) return res.status(404).json({
                 error: "posts cannot be found"
             })
             else {
+                //find author name and url for every post
+                await Post.populate(posts, { path: 'author', select: 'username'});
+
                 return res.status(200).json({
-                    posts: posts
+                    posts: posts,
+                    count: count
                 })
             }
         })
     }catch(err){
         return next(err);
     }
+}
+
+exports.getAllPersonalPost = async (req, res, next) => {
+    let page = req.query.p ? parseInt(req.query.p) : 1;
+    let count = await Post.countDocuments({author: req.user._id});
+
+    let query = Post.find({author: req.user._id})
+    .limit(10)
+    .skip(10 * (page - 1))
+    .select("title subtitle author date_created published view");
+    query = helper.processModePost(query, "latest");
+
+    query.exec(async (err, posts) => {
+        if(err) return next(err);
+
+        if(!posts || posts.length == 0) return res.status(404).json({
+            error: "posts cannot be found"
+        })
+        else {
+            return res.status(200).json({
+                posts: posts,
+                count: count
+            })
+        }
+    })
 }

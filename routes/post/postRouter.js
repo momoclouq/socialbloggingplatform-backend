@@ -9,15 +9,19 @@ const passport = require('passport');
 const commentRouter = require("./comment/commentRouter");
 
 //route to comment
-router.use("/:id/comment", commentRouter)
+router.use("/:id/comment", commentRouter);
 
-router.get("/:id", controller.getPostById);
+router.get("/personal", passport.authenticate('jwt', {session: false}), controller.getAllPersonalPost);
+
+router.get("/published", controller.getAllPostPublished);
+
+router.get("/published/:id", controller.getPublishedPostById);
+
+router.get("/:id", passport.authenticate('jwt', { session: false }), controller.getPostById);
 
 router.delete("/:id", passport.authenticate('jwt', { session: false }), controller.deletePostById);
 
 router.put("/:id", passport.authenticate('jwt', { session: false }), controller.putPostById);
-
-router.get("/published", controller.getAllPostPublished);
 
 router.post("/", passport.authenticate('jwt', { session: false }), controller.postPost);
 

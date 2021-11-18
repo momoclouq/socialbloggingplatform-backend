@@ -67,7 +67,8 @@ passport.use("signup", new localStrategy(
                 let newBlogger = new Blogger({
                     username: req.body.username,
                     email: req.body.email,
-                    password: hash
+                    password: hash,
+                    motto: req.body.motto ? req.body.motto : ""
                 })
 
                 await newBlogger.save();

@@ -11,11 +11,14 @@ router.get("/current", passport.authenticate("jwt", {session: false}), controlle
 //get blogger by id
 router.get("/:id", controller.getBloggerById);
 
-router.delete("/:id", passport.authenticate("jwt", {session: false}), controller.deleteBloggerById);
+router.delete("/", passport.authenticate("jwt", {session: false}), controller.deleteBloggerCurrent);
 
-router.put("/:id", passport.authenticate("jwt", {session: false}), controller.putBloggerById);
+router.put("/", passport.authenticate("jwt", {session: false}), controller.putBloggerCurrent);
+
+router.get("/:id/heart", controller.heartBloggerById);
 
 //get all blogger
 router.get("/", controller.getAllBlogger);
+
 
 module.exports = router;

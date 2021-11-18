@@ -17,6 +17,10 @@ exports.getCommentById = (req, res, next) => {
     })
 }
 
+// exports.getCommentsByIds = (req, res, next) => {
+//     Comment.find().where('_id').in(req.body.ids)
+// }
+
 exports.deleteCommentById = [
     helper.checkIfPostIsFromUser,
     (req, res, next) => {
@@ -85,6 +89,9 @@ exports.postComment = [
     async (req, res, next) => {
         const errors = validationResult(req);
 
+        console.log(req.body.content);
+        console.log(req.body.author);
+
         if(!errors.isEmpty()){
             return res.status(404).json({
                 error: errors.array()
@@ -130,8 +137,13 @@ exports.getAllComment = async (req, res, next) => {
             return Comment.findById(id).exec();
         }));
 
+        allComments = allComments.filter((comment) => {
+            return comment != null;
+        })
+
         return res.status(200).json({
-            comments: allComments
+            comments: allComments,
+            count: allComments.length
         })
     } catch(err){
         return next(err);

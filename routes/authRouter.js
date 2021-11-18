@@ -2,6 +2,7 @@ const express = require("express");
 const { body, validationResult } = require("express-validator");
 const router = express.Router();
 const passport = require("passport");
+const crypto = require('crypto');
 
 const jwt = require('jsonwebtoken');
 
@@ -12,7 +13,7 @@ router.post("/login",
             async (err, blogger, info) => {
                 try{
                     if(err) {
-                        const error = new Error('An error occurred. herere');
+                        const error = new Error('An error occurred.');
             
                         return next(error);
                     }
@@ -41,9 +42,10 @@ router.post("/login",
 )
 
 router.post('/signup', [
-    body('username').exists().isString().isLength({max: 40}).withMessage("username must be a string and shorter than 40-character long"),
+    body('username').exists().isString().isLength({min:1, max: 40}).withMessage("username must be a string and shorter than 40-character long"),
     body("email").exists().isEmail().withMessage("Email must be in correct format"),
     body("password").exists().isString().isLength({min: 6}).withMessage("password must be filled, 6 min in length"),
+    body("motto").optional().isString().isLength({max: 400}).withMessage("motto must be less than 400-character long"),
     (req, res, next) => {
         let errors = validationResult(req);
 
@@ -68,5 +70,21 @@ router.post('/signup', [
         })(req, res, next);
     }
 ])
+
+router.post('/logout', 
+    passport.authenticate('jwt', {session: false}),
+    async (req, res, next) => {
+        try{
+            req.user.token = crypto.randomBytes(8).toString("hex");
+            await req.user.save();
+    
+            return res.status(200).json({
+                logout: true
+            })
+        } catch (err){
+            return next(err);
+        }
+    }
+)
 
 module.exports = router;
