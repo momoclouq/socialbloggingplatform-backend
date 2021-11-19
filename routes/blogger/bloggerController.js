@@ -28,7 +28,6 @@ exports.deleteBloggerCurrent = [
     body('password').exists().isString().withMessage("Password field must be filled"),
     (req, res, next) => {
         const errors = validationResult(req);
-        console.log(req.body.password);
 
         if(!errors.isEmpty()){
             return res.status(404).json({
